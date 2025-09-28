@@ -1,18 +1,39 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import "./UserLogin.css";
 import tourismLogo from "./assets/Tourism logo.jpg";
+import { authService } from './services/api';
 
 const UserLogin = ({ onNavigateHome }) => {
   const [isLogin, setIsLogin] = useState(true);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [successMessage, setSuccessMessage] = useState('');
   const [formData, setFormData] = useState({
     name: '',
     email: '',
     password: '',
-    confirmPassword: ''
+    confirmPassword: '',
+    phone: ''
   });
+
+  // Test API connectivity on component mount
+  useEffect(() => {
+    const testAPI = async () => {
+      try {
+        console.log('🧪 Testing API connectivity...');
+        const response = await fetch('http://localhost:5000/api/health');
+        const data = await response.json();
+        console.log('✅ API is reachable:', data);
+      } catch (error) {
+        console.error('❌ API connectivity test failed:', error);
+        setError('Cannot connect to server. Please ensure the backend is running on port 5000.');
+      }
+    };
+
+    testAPI();
+  }, []);
 
   const handleInputChange = (e) => {
     setFormData({
@@ -21,25 +42,82 @@ const UserLogin = ({ onNavigateHome }) => {
     });
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setIsLoading(true);
-    
-    // Simulate API call
-    setTimeout(() => {
+    setError('');
+    setSuccessMessage('');
+
+    try {
       if (isLogin) {
-        console.log('Login attempt:', { email: formData.email, password: formData.password });
+        // Login user
+        const response = await authService.login(formData.email, formData.password);
+        
+        if (response.success) {
+          setSuccessMessage('Login successful! Welcome back!');
+          console.log('User logged in:', response.user);
+          
+          // Store user data in localStorage
+          localStorage.setItem('user', JSON.stringify(response.user));
+          
+          // Redirect to home page after 2 seconds
+          setTimeout(() => {
+            onNavigateHome();
+          }, 2000);
+        }
       } else {
+        // Register user
         if (formData.password !== formData.confirmPassword) {
-          alert('Passwords do not match!');
+          setError('Passwords do not match!');
           setIsLoading(false);
           return;
         }
-        console.log('Signup attempt:', formData);
+
+        if (formData.password.length < 6) {
+          setError('Password must be at least 6 characters long');
+          setIsLoading(false);
+          return;
+        }
+
+        if (!formData.phone) {
+          setError('Phone number is required');
+          setIsLoading(false);
+          return;
+        }
+
+        const response = await authService.register({
+          name: formData.name,
+          email: formData.email,
+          password: formData.password,
+          phone: formData.phone
+        });
+
+        if (response.success) {
+          setSuccessMessage('Registration successful! Please check your email to verify your account.');
+          console.log('User registered:', response.user);
+          
+          // Clear form and switch to login
+          setFormData({
+            name: '',
+            email: '',
+            password: '',
+            confirmPassword: '',
+            phone: ''
+          });
+          
+          // Switch to login mode after 3 seconds
+          setTimeout(() => {
+            setIsLogin(true);
+            setSuccessMessage('');
+          }, 3000);
+        }
       }
+    } catch (error) {
+      console.error('Auth error:', error);
+      setError(error.message || 'An error occurred. Please try again.');
+    } finally {
       setIsLoading(false);
-      // Here you would typically redirect to the dashboard or home page
-    }, 1500);
+    }
   };
 
   const toggleAuthMode = () => {
@@ -48,10 +126,13 @@ const UserLogin = ({ onNavigateHome }) => {
       name: '',
       email: '',
       password: '',
-      confirmPassword: ''
+      confirmPassword: '',
+      phone: ''
     });
     setShowPassword(false);
     setShowConfirmPassword(false);
+    setError('');
+    setSuccessMessage('');
   };
 
   return (
@@ -162,6 +243,21 @@ const UserLogin = ({ onNavigateHome }) => {
               </button>
             </div>
 
+            {/* Error and Success Messages */}
+            {error && (
+              <div className="alert alert-error">
+                <span className="alert-icon">⚠️</span>
+                {error}
+              </div>
+            )}
+            
+            {successMessage && (
+              <div className="alert alert-success">
+                <span className="alert-icon">✅</span>
+                {successMessage}
+              </div>
+            )}
+
             <form onSubmit={handleSubmit}>
               {/* Name Field (Signup only) */}
               <div className={`form-group name-field ${!isLogin ? 'show' : ''}`}>
@@ -174,6 +270,24 @@ const UserLogin = ({ onNavigateHome }) => {
                     value={formData.name}
                     onChange={handleInputChange}
                     className="form-input"
+                    required={!isLogin}
+                  />
+                </div>
+              </div>
+
+              {/* Phone Field (Signup only) */}
+              <div className={`form-group phone-field ${!isLogin ? 'show' : ''}`}>
+                <div className="input-wrapper">
+                  <span className="input-icon">📱</span>
+                  <input
+                    type="tel"
+                    name="phone"
+                    placeholder="Phone Number (10 digits)"
+                    value={formData.phone}
+                    onChange={handleInputChange}
+                    className="form-input"
+                    pattern="[0-9]{10}"
+                    maxLength="10"
                     required={!isLogin}
                   />
                 </div>

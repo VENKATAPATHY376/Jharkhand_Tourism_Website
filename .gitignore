@@ -12,9 +12,6 @@ dist
 dist-ssr
 *.local
 
-# Large video files (>100MB)
-src/assets/BGvideo-1.mp4
-
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
@@ -25,3 +22,6 @@ src/assets/BGvideo-1.mp4
 *.njsproj
 *.sln
 *.sw?
+
+.vercel
+temp_large_files/

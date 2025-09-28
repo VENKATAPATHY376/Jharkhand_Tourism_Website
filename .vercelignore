@@ -1,0 +1,11 @@
+node_modules
+.git
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+.DS_Store
+*.log
+temp_large_files/
+backend/
+.vercel/
